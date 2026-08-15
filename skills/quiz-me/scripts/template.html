@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --ink:#12181f; --dim:#5b6774; --line:#dfe3e8;
+    --blue:#2c5aa8; --blueSoft:#e8eefb; --amber:#a8631f;
+    --ok:#1f7a4d; --okBg:#e6f4ec; --bad:#b3261e; --badBg:#fbeae9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:800px;margin:0 auto;padding:26px 20px 90px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:13px}
+  .kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);font-weight:700}
+  h1{font-size:25px;margin:6px 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--dim);font-size:13.5px;margin:0}
+  .meta{display:flex;justify-content:space-between;align-items:center;
+    font-size:12px;color:var(--dim);margin:16px 0 6px;font-variant-numeric:tabular-nums}
+  .bar{height:5px;background:var(--line);border-radius:3px;margin-bottom:20px;overflow:hidden}
+  .bar>i{display:block;height:100%;width:0;background:var(--blue);transition:width .3s}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:22px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  .qtag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);font-weight:700}
+  .diff{font-size:12px;color:var(--dim);white-space:nowrap}
+  .diff .dots{letter-spacing:2px;font-size:11px}
+  .diff.d1 .dots{color:#4ba07a} .diff.d2 .dots{color:#5d9b4b}
+  .diff.d3 .dots{color:#c79a2e} .diff.d4 .dots{color:#c2762c}
+  .diff.d5 .dots{color:#b3261e}
+  .q{font-size:19px;font-weight:650;margin:10px 0 18px;line-height:1.42}
+  code{background:#eef1f5;border:1px solid var(--line);border-radius:4px;
+    padding:1px 5px;font-size:.87em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .opt{display:block;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);
+    border-radius:8px;padding:12px 14px;margin-bottom:9px;font:inherit;cursor:pointer;
+    transition:border-color .12s,background .12s}
+  .opt:hover:not(:disabled){border-color:var(--blue);background:var(--blueSoft)}
+  /* Answered options stay fully legible - the browser's default disabled
+     styling greys the text out, which reads as "broken" rather than "locked". */
+  .opt:disabled{cursor:default;opacity:1;color:var(--ink);-webkit-text-fill-color:var(--ink)}
+  .opt:disabled code{opacity:1}
+  .opt.right{border-color:var(--ok);background:var(--okBg)}
+  .opt.wrong{border-color:var(--bad);background:var(--badBg)}
+  .opt .mark{float:right;font-weight:700;font-size:13px}
+  .conf{margin:18px 0 4px;padding-top:16px;border-top:1px dashed var(--line)}
+  .conf p{margin:0 0 9px;font-size:13px;color:var(--dim)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:7px 15px;
+    font:inherit;font-size:14px;cursor:pointer;text-align:center;line-height:1.25}
+  .chip small{display:block;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .chip:hover:not(:disabled){border-color:var(--blue)}
+  .chip:disabled{opacity:1;color:var(--ink);-webkit-text-fill-color:var(--ink)}
+  .chip.on:disabled{color:#fff;-webkit-text-fill-color:#fff}
+  .chip.on{border-color:var(--blue);background:var(--blue);color:#fff;font-weight:600}
+  .chip.on small{color:#cfe0ff}
+  .exp{margin-top:18px;padding:15px 16px;border-left:4px solid var(--blue);
+    background:#f7f9fc;border-radius:0 8px 8px 0;font-size:14.5px}
+  .cite{display:block;margin-top:9px;font-size:12.5px;color:var(--dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .verdict{font-weight:700;font-size:14px;margin:0 0 8px;display:flex;
+    justify-content:space-between;gap:10px;align-items:baseline}
+  .verdict.ok{color:var(--ok)} .verdict.bad{color:var(--bad)}
+  .sched{font-weight:600;font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .next{margin-top:18px;background:var(--ink);color:#fff;border:0;border-radius:8px;
+    padding:11px 22px;font:inherit;font-weight:600;cursor:pointer}
+  .next:hover{background:var(--blue)}
+  .ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line);margin-left:8px}
+  .ghost:hover{background:var(--blueSoft);border-color:var(--blue);color:var(--ink)}
+  .hidden{display:none}
+  .score{font-size:52px;font-weight:750;letter-spacing:-.03em;margin:0}
+  .scoreSub{color:var(--dim);margin:2px 0 20px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:14px 0}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+  td.n{font-variant-numeric:tabular-nums;text-align:right}
+  .read{background:#fdfaf5;border-left:4px solid var(--amber);padding:14px 16px;
+    border-radius:0 8px 8px 0;font-size:14.5px;margin:16px 0}
+  .missed li{margin-bottom:9px;font-size:14px}
+  .export{margin-top:24px;padding-top:18px;border-top:1px dashed var(--line)}
+  .export h3{font-size:14px;margin:0 0 6px}
+  .export p{font-size:13px;color:var(--dim);margin:0 0 10px}
+  textarea{width:100%;height:82px;font:12px/1.5 ui-monospace,Menlo,monospace;
+    border:1px solid var(--line);border-radius:8px;padding:10px;background:#fbfcfd;resize:vertical}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;
+    opacity:0;transition:.22s;pointer-events:none}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">__KICKER__</div>
+    <h1>__TITLE__</h1>
+    <p class="sub">__SUBTITLE__</p>
+  </header>
+  <div class="meta"><span id="counter"></span><span id="running"></span></div>
+  <div class="bar"><i id="fill"></i></div>
+  <div id="quiz" class="card"></div>
+  <div id="done" class="card hidden"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const CFG = __CONFIG__;
+const CARDS = __CARDS__;
+
+const CONF = [
+  {label:"Sure",     hint:"I know this"},
+  {label:"Think so", hint:"fairly confident"},
+  {label:"Guess",    hint:"coin flip"}
+];
+const LEVEL_NAME = __LEVELS__;
+
+let i = 0, picked = null, conf = null, log = [];
+const $ = id => document.getElementById(id);
+
+function dots(d){
+  return `<span class="diff d${d}"><span class="dots">${"●".repeat(d)}${"○".repeat(5-d)}</span>
+          &nbsp;L${d} ${LEVEL_NAME[d]||""}</span>`;
+}
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'), 1600);
+}
+// The scheduler lives in Python. It ships each card's six possible outcomes
+// (3 confidences x right/wrong) as pre-rendered strings, so this page never
+// re-implements SM-2 and the two can't drift.
+function preview(card, ok, c){
+  if (!CFG.scheduled || !card.sched) return "";
+  return card.sched[(ok ? "r" : "w") + c] || "";
+}
+
+function render(){
+  const q = CARDS[i];
+  $('counter').textContent = `Card ${i+1} of ${CARDS.length}`;
+  $('running').textContent = log.length
+    ? `${log.filter(r=>r.ok).length}/${log.length} correct` : '';
+  $('fill').style.width = (i/CARDS.length*100)+'%';
+  $('quiz').innerHTML = `
+    <div class="top">
+      <div class="qtag">${q.tag || 'Question ' + (i+1)}</div>
+      ${dots(q.d)}
+    </div>
+    <div class="q">${q.q}</div>
+    <div id="opts">${q.opts.map((o,n)=>
+      `<button class="opt" data-n="${n}">${o}</button>`).join('')}</div>
+    <div id="after"></div>`;
+  $('quiz').querySelectorAll('.opt').forEach(b =>
+    b.addEventListener('click', ()=>choose(+b.dataset.n)));
+}
+
+function choose(n){
+  if (picked !== null) return;
+  picked = n;
+  const q = CARDS[i];
+  $('quiz').querySelectorAll('.opt').forEach(b=>{
+    const bn = +b.dataset.n;
+    b.disabled = true;
+    if (bn === q.a){ b.classList.add('right'); b.innerHTML += '<span class="mark">correct</span>'; }
+    else if (bn === n){ b.classList.add('wrong'); b.innerHTML += '<span class="mark">your pick</span>'; }
+  });
+  const ok = n === q.a;
+  // Confidence is asked BEFORE the explanation is revealed. That ordering is
+  // the whole point: Anki grades recall after you have seen the answer, which
+  // cannot separate "knew it" from "guessed right". This can.
+  $('after').innerHTML = `
+    <div class="conf">
+      <p>Before you read why - how sure were you?</p>
+      <div class="chips">${CONF.map((c,n2)=>{
+        const p = preview(q, ok, n2);
+        return `<button class="chip" data-c="${n2}">${c.label}${
+          p ? `<small>${p}</small>` : `<small>${c.hint}</small>`}</button>`;
+      }).join('')}</div>
+    </div>`;
+  $('quiz').querySelectorAll('.chip').forEach(b =>
+    b.addEventListener('click', ()=>setConf(+b.dataset.c)));
+}
+
+function setConf(c){
+  if (conf !== null) return;
+  conf = c;
+  const q = CARDS[i], ok = picked === q.a;
+  $('quiz').querySelectorAll('.chip').forEach(b=>{
+    b.disabled = true;
+    if (+b.dataset.c === c) b.classList.add('on');
+  });
+  log.push({id:q.id, ok, conf:c, d:q.d, q:q.q, exp:q.exp, cite:q.cite});
+  const sched = preview(q, ok, c);
+  const flag = (!ok && c === 0)
+    ? ' &nbsp;·&nbsp; confidently wrong - this one gets reset hardest'
+    : (ok && c === 2) ? ' &nbsp;·&nbsp; lucky guess - counted as weak' : '';
+  $('after').insertAdjacentHTML('beforeend', `
+    <div class="exp">
+      <p class="verdict ${ok?'ok':'bad'}">
+        <span>${ok?'Right':'Not quite'}${flag}</span>
+        ${sched ? `<span class="sched">next: ${sched}</span>` : ''}
+      </p>
+      ${q.exp}
+      ${q.cite ? `<span class="cite">${q.cite}</span>` : ''}
+    </div>
+    <button class="next" id="next">${
+      i === CARDS.length-1 ? 'Finish session' : 'Next card'}</button>`);
+  $('next').addEventListener('click', ()=>{
+    i++; picked = null; conf = null;
+    if (i < CARDS.length) render(); else finish();
+  });
+}
+
+function finish(){
+  $('quiz').classList.add('hidden');
+  $('fill').style.width = '100%';
+  $('counter').textContent = 'Session complete';
+  $('running').textContent = '';
+
+  const right = log.filter(r=>r.ok).length;
+  const pct = Math.round(right/log.length*100);
+  const buckets = CONF.map((c,n)=>{
+    const rows = log.filter(r=>r.conf===n);
+    return {label:c.label, n:rows.length, right:rows.filter(r=>r.ok).length};
+  });
+  const sureWrong  = log.filter(r=>r.conf===0 && !r.ok).length;
+  const guessRight = log.filter(r=>r.conf===2 && r.ok).length;
+
+  let read;
+  if (sureWrong >= 2)
+    read = `<b>Overconfident where it costs.</b> ${sureWrong} answers you called
+      "Sure" were wrong. Those are the expensive ones - a confident wrong model is
+      what produces a design built on it. They are reset hardest and will come back soon.`;
+  else if (guessRight >= 3)
+    read = `<b>You know more than you think.</b> ${guessRight} guesses landed. Your
+      instincts track the real shape; you just have not put words to it. These are
+      scheduled as weak on purpose, so they come back before they fade.`;
+  else if (pct >= 80 && sureWrong === 0)
+    read = `<b>Well calibrated.</b> High accuracy and confidently wrong nowhere. You
+      can be trusted to say "not sure" on this material, which is the useful half.`;
+  else
+    read = `<b>Reasonable middle.</b> Confidence and accuracy roughly agree. The
+      regions worth firming up are listed below.`;
+
+  const missed = log.filter(r=>!r.ok);
+  const payload = {
+    v: 1, deck: CFG.deck, session: CFG.session,
+    finished: new Date().toISOString(),
+    level: CFG.level,
+    results: log.map(r=>({id:r.id, ok:r.ok, conf:r.conf, d:r.d}))
+  };
+  const blob = JSON.stringify(payload);
+
+  $('done').classList.remove('hidden');
+  $('done').innerHTML = `
+    <div class="qtag">Result</div>
+    <p class="score">${right}<span style="font-size:24px;color:var(--dim)"> / ${log.length}</span></p>
+    <p class="scoreSub">${pct}% correct${CFG.scheduled ? ` · level ${CFG.level} · ${CFG.deckTitle}` : ''}</p>
+    <table>
+      <tr><th>You said</th><th class="n">Asked</th><th class="n">Right</th><th class="n">Actual</th></tr>
+      ${buckets.map(b=>`<tr><td>${b.label}</td><td class="n">${b.n}</td>
+        <td class="n">${b.right}</td>
+        <td class="n">${b.n ? Math.round(b.right/b.n*100)+'%' : '-'}</td></tr>`).join('')}
+    </table>
+    <div class="read">${read}</div>
+    ${missed.length ? `<h3 style="font-size:15px;margin:22px 0 8px">Worth re-reading</h3>
+      <ul class="missed">${missed.map(m=>
+        `<li>${dots(m.d)}<br>${m.exp}${m.cite
+          ? `<span class="cite">${m.cite}</span>` : ''}</li>`).join('')}</ul>` : ''}
+    ${CFG.scheduled ? `
+      <div class="export">
+        <h3>Save this session</h3>
+        <p>Download folds it into your progress file automatically. Or copy the
+           line and paste it to Claude - either way the same command picks it up:
+           <code>${CFG.syncCmd || 'quiz-me-full sync'}</code></p>
+        <button class="next" id="dl">Download result</button>
+        <button class="next ghost" id="cp">Copy to clipboard</button>
+        <textarea id="raw" readonly>${blob}</textarea>
+      </div>` : ''}
+    <button class="next ghost" style="margin-left:0" onclick="location.reload()">Take it again</button>`;
+
+  if (CFG.scheduled){
+    $('dl').addEventListener('click', ()=>{
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([blob], {type:'application/json'}));
+      a.download = `${CFG.deck}-${CFG.session}.quizresult.json`;
+      a.click(); URL.revokeObjectURL(a.href);
+      toast('Downloaded - run the sync command');
+    });
+    $('cp').addEventListener('click', async ()=>{
+      try { await navigator.clipboard.writeText(blob); toast('Copied'); }
+      catch { $('raw').select(); toast('Select-all + copy'); }
+    });
+  }
+}
+render();
+</script>
+</body>
+</html>

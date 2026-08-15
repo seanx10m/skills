@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+# progress-hud - toggle + drive the floating macOS progress HUD.
+#
+# Toggle (persisted):
+#   progress-hud on | off | status
+#   progress-hud session on | off | reset      # this-session override beats global
+# Drive the feed (spawns the HUD if enabled):
+#   progress-hud start "<title>" [--total N] [--phase P] [--detail D]
+#   progress-hud update [--done N] [--total N] [--phase P] [--detail D]
+#   progress-hud done | stall | stop
+#
+# OFF => start is a no-op (nothing spawns). See SKILL.md.
+set -euo pipefail
+
+DIR="$HOME/.progress-hud"
+SRC="$HOME/.claude/skills/progress-hud/assets/ProgressHUD.swift"
+BIN="$DIR/ProgressHUD"
+SESS_DIR="$DIR/sessions"
+GLOBAL="$DIR/enabled"
+mkdir -p "$DIR" "$SESS_DIR"
+
+sid="${CLAUDE_CODE_SESSION_ID:-}"
+sess()      { [ -n "$sid" ] && echo "$SESS_DIR/$sid"; }
+sess_off()  { [ -n "$sid" ] && echo "$SESS_DIR/$sid.off"; }
+
+# per-session feed/pid so multiple HUDs (one per session) can run at once;
+# no sid (e.g. manual/demo run) falls back to the old shared singleton paths.
+if [ -n "$sid" ]; then
+  FEED="$SESS_DIR/$sid.json"
+  PIDF="$SESS_DIR/$sid.pid"
+else
+  FEED="$DIR/current.json"
+  PIDF="$DIR/pid"
+fi
+
+# session override beats global; returns 0 (enabled) / 1 (disabled)
+enabled() {
+  local s so; s="$(sess)"; so="$(sess_off)"
+  if [ -n "$so" ] && [ -f "$so" ]; then return 1; fi
+  if [ -n "$s" ]  && [ -f "$s"  ]; then return 0; fi
+  [ -f "$GLOBAL" ]
+}
+
+running() { [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF" 2>/dev/null)" 2>/dev/null; }
+
+build_if_needed() {
+  if [ ! -x "$BIN" ] || [ "$SRC" -nt "$BIN" ]; then
+    swiftc -O -o "$BIN" "$SRC"
+  fi
+}
+
+count_live() {  # how many HUDs are already up, for stacking new windows below them
+  local n=0 p
+  for p in "$SESS_DIR"/*.pid "$DIR/pid"; do
+    [ -f "$p" ] && kill -0 "$(cat "$p" 2>/dev/null)" 2>/dev/null && n=$((n + 1))
+  done
+  echo "$n"
+}
+
+kill_all() {  # stop every running HUD instance (global off / status-wide stop)
+  local p
+  for p in "$SESS_DIR"/*.pid "$DIR/pid"; do
+    [ -f "$p" ] && kill "$(cat "$p" 2>/dev/null)" 2>/dev/null || true
+  done
+}
+
+spawn_if_needed() {
+  enabled || return 0
+  running && return 0
+  build_if_needed
+  nohup "$BIN" "$FEED" "$PIDF" "$(count_live)" >/dev/null 2>&1 &
+  echo $! > "$PIDF"   # record pid NOW; the HUD writes its own later, so this closes the launch race
+  # ponytail: sequential-CLI safe; truly-concurrent callers could still double-spawn - add flock if that ever happens
+}
+
+# patch current.json with the given key=val pairs (python: robust, no jq dep)
+patch() {
+  FEED="$FEED" python3 - "$@" <<'PY'
+import json, os, sys, time
+feed = os.environ["FEED"]
+try:
+    with open(feed) as f: d = json.load(f)
+except Exception:
+    d = {"title": "…", "done": 0, "total": 0, "phase": "", "detail": "", "state": "running"}
+it = iter(sys.argv[1:])
+for k in it:
+    v = next(it)
+    if k in ("done", "total"):
+        d[k] = int(v)
+    else:
+        d[k] = v
+d["updatedAt"] = time.time()
+with open(feed, "w") as f: json.dump(d, f)
+PY
+}
+
+# ---- arg helpers for start/update ----
+# parse --flags into the global KV array (spaces in values preserved; no $(...) splitting)
+KV=()
+parse_flags() {
+  KV=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --total)  KV+=(total  "$2"); shift 2;;
+      --done)   KV+=(done   "$2"); shift 2;;
+      --phase)  KV+=(phase  "$2"); shift 2;;
+      --detail) KV+=(detail "$2"); shift 2;;
+      --folder) KV+=(folder "$2"); shift 2;;
+      *) shift;;
+    esac
+  done
+}
+
+cmd="${1:-status}"; shift || true
+case "$cmd" in
+  on)   touch "$GLOBAL"; echo "📊 progress-hud ON (global) - long-running work will raise the HUD.";;
+  off)  rm -f "$GLOBAL"; kill_all
+        echo "progress-hud OFF (global) - nothing will spawn.";;
+  session)
+    case "${1:-}" in
+      on)    [ -n "$sid" ] && { rm -f "$(sess_off)"; touch "$(sess)"; };  echo "📊 ON for this session.";;
+      off)   [ -n "$sid" ] && { rm -f "$(sess)"; touch "$(sess_off)"; };  running && kill "$(cat "$PIDF")" 2>/dev/null || true; echo "OFF for this session.";;
+      reset) [ -n "$sid" ] && rm -f "$(sess)" "$(sess_off)"; echo "session override cleared (back to global).";;
+      *) echo "usage: progress-hud session on|off|reset" >&2; exit 2;;
+    esac;;
+  status)
+    if enabled; then echo "resolved: ON"; else echo "resolved: OFF"; fi
+    [ -f "$GLOBAL" ] && echo "global: on" || echo "global: off"
+    running && echo "hud: running (pid $(cat "$PIDF"))" || echo "hud: not running"
+    [ -f "$FEED" ] && { echo "feed:"; cat "$FEED"; echo; } || echo "feed: none";;
+  start)
+    title="${1:-work in progress}"; shift || true
+    if ! enabled; then echo "progress-hud is OFF - not spawning (turn on with: progress-hud on)"; exit 0; fi
+    parse_flags "$@"
+    # default folder = git repo name (or cwd basename); --folder overrides via KV
+    folder="$(basename "$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || echo "$PWD")")"
+    # fresh effort: clean slate (done/total 0), then apply any --flags on top
+    patch title "$title" folder "$folder" state running done 0 total 0 ${KV[@]+"${KV[@]}"}
+    spawn_if_needed
+    echo "📊 HUD tracking: $title";;
+  update)
+    parse_flags "$@"; patch ${KV[@]+"${KV[@]}"}; spawn_if_needed;;
+  done)   patch state done;  echo "✓ marked done (HUD lingers ~5s then closes).";;
+  stall)  patch state stalled;;
+  stop)   running && kill "$(cat "$PIDF")" 2>/dev/null || true
+          rm -f "$FEED" "$PIDF"; echo "HUD stopped, feed cleared.";;
+  -h|--help|help)
+    sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//';;
+  *) echo "unknown command: $cmd (try: progress-hud --help)" >&2; exit 2;;
+esac
