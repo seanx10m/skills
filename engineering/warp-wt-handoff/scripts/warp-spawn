@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# Open a Warp terminal in DIR running CMD.
+# Default: a new TAB in the active window, via a Warp tab config.
+# --window: a new window via a generated launch configuration. Needed for
+#           --pane/--split, since a tab config here carries one pane.
+set -euo pipefail
+
+usage() { echo "usage: warp-spawn --cwd DIR [--title T] [--color C] [--window] [--pane CMD]... [--split vertical|horizontal] -- CMD..." >&2; exit 2; }
+
+# Single-quote a string for the shell AND for a YAML single-quoted scalar.
+# Both escape an embedded quote by doubling it, so one helper covers both.
+q() {
+  local tick="'" s=$1
+  s=${s//$tick/$tick$tick}
+  printf '%s%s%s' "$tick" "$s" "$tick"
+}
+
+cwd="" title="" color=yellow mode=tab split=vertical
+panes=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --cwd)   cwd="${2:?}"; shift 2 ;;
+    --title) title="${2:?}"; shift 2 ;;
+    --color) color="${2:?}"; shift 2 ;;
+    --tab)    mode=tab; shift ;;
+    --window) mode=window; shift ;;
+    --pane)  panes+=("${2:?}"); shift 2 ;;
+    --split) split="${2:?}"; shift 2 ;;
+    --)      shift; break ;;
+    *)       usage ;;
+  esac
+done
+[[ -n "$cwd" && $# -gt 0 ]] || usage
+[[ -d "$cwd" ]] || { echo "warp-spawn: no such dir: $cwd" >&2; exit 1; }
+[[ $split == vertical || $split == horizontal ]] || { echo "warp-spawn: --split must be vertical or horizontal" >&2; exit 2; }
+case $color in black|red|green|yellow|blue|magenta|cyan|white) ;;
+  *) echo "warp-spawn: --color must be one of black red green yellow blue magenta cyan white" >&2; exit 2 ;; esac
+: "${title:=$(basename "$cwd")}"
+
+# One arg is a shell line, already written the way you want it run: pass it through.
+# Several args are argv, so quote each - otherwise `cc "a prompt"` arrives as bare words.
+if [[ $# -eq 1 ]]; then
+  cmd="$1"
+else
+  # argv[0] stays BARE - zsh only expands an alias on an unquoted word, and `cc` is one.
+  cmd="$1"; shift
+  for a in "$@"; do cmd+=" $(q "$a")"; done
+fi
+
+if [[ $mode == tab ]]; then
+  [[ ${#panes[@]} -eq 0 ]] || { echo "warp-spawn: --pane needs a launch config; add --window" >&2; exit 2; }
+  # A Warp tab config is the only thing that opens a TAB in the ACTIVE window
+  # AND runs a command in it. Two dead ends, written down so nobody retries:
+  # `warp://action/new_tab` takes a path and cannot run anything, and driving
+  # the prompt with System Events loses - Warp restores a stale draft so the
+  # text lands on top of it, and a slow tab sends it to whatever had focus.
+  # `title` is NOT the tab's name. It renders as a coloured label above the
+  # tab; the tab keeps naming itself after its command and cwd. Two tabs
+  # sharing a title stay two labels - it does not group them.
+  tt() { local s=$1; s=${s//\\/\\\\}; s=${s//\"/\\\"}; printf '%s' "$s"; }
+  conf_dir=~/.warp/tab_configs
+  mkdir -p "$conf_dir"
+  # ponytail: one config per spawn, so sweep yesterday's on the way in
+  find "$conf_dir" -name "spawn-*.toml" -mtime +1 -delete 2>/dev/null || true
+  name="spawn-$(date +%s)-$$"
+  cat > "$conf_dir/$name.toml" <<TOML
+name = "$(tt "$name")"
+title = "$(tt "$title")"
+color = "$color"
+
+[[panes]]
+id = "main"
+type = "terminal"
+directory = "$(tt "$cwd")"
+shell = "zsh"
+is_focused = true
+commands = ["$(tt "$cmd")"]
+TOML
+  open "warp://tab_config/$name"
+  echo "$conf_dir/$name.toml"
+  exit 0
+fi
+
+conf_dir=~/.warp/launch_configurations
+mkdir -p "$conf_dir"
+# ponytail: one config per spawn, so sweep yesterday's on the way in
+find "$conf_dir" -name "spawn-*.yaml" -mtime +1 -delete 2>/dev/null || true
+
+# A `layout:` node is a leaf (cwd + commands) or a splitter (split_direction + panes),
+# never both. Every pane shares --cwd; only the command differs.
+leaf() { printf '          cwd: %s\n          commands:\n            - exec: %s\n' "$(q "$cwd")" "$(q "$1")"; }
+pane() { printf '            - cwd: %s\n              commands:\n                - exec: %s\n' "$(q "$cwd")" "$(q "$1")"; }
+
+if [[ ${#panes[@]} -eq 0 ]]; then
+  layout=$(leaf "$cmd")
+else
+  layout=$(printf '          split_direction: %s\n          panes:\n' "$split"
+           for p in "$cmd" "${panes[@]}"; do pane "$p"; done)
+fi
+
+name="spawn-$(date +%s)-$$"
+# warp://launch/<X> matches the `name:` field, NOT the filename. Silently does
+# nothing on a miss, and `open` still exits 0 - so keep name == the slug we launch.
+cat > "$conf_dir/$name.yaml" <<YAML
+---
+name: $(q "$name")
+windows:
+  - tabs:
+      - title: $(q "$title")
+        layout:
+$layout
+YAML
+open "warp://launch/$name"
+# Warp builds the window without raising itself, so it lands behind whatever you were in.
+osascript -e 'delay 0.8' -e 'tell application "System Events" to tell process "Warp" to set frontmost to true' 2>/dev/null || true
+echo "$conf_dir/$name.yaml"

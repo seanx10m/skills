@@ -1,4 +1,8 @@
 .DS_Store
+.venv/
+node_modules/
 __pycache__/
 scratch/
-.previews/
+state/
+*.bak
+*.preview.html

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.claude.talk-to-me</string>
+    <key>CFBundleName</key>
+    <string>talk-to-me</string>
+    <key>NSPersonalVoiceUsageDescription</key>
+    <string>talk-to-me reads selected text and Claude Code responses aloud in your Personal Voice.</string>
+</dict>
+</plist>

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Launch Claude Code with live terminal narration.
+# Everything you see is unchanged - the tap mirrors the pty through untouched and
+# speaks each sentence as it is painted. If the tap dies, the Stop/PreToolUse hooks
+# take over on their own and you hear the response at the end of each block.
+set -euo pipefail
+S="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TOO="$(dirname "$S")"
+BASE="$HOME/.claude/skills/talk-to-me"
+PY="$TOO/.venv/bin/python"
+[ -x "$PY" ] || { echo "talk-to-me: venv missing, run: python3 -m venv $TOO/.venv && $TOO/.venv/bin/pip install pyte" >&2; exec claude "$@"; }
+
+SPOOL="$TOO/state/tap/$$"
+mkdir -p "$SPOOL"
+cleanup() { [ -n "${READER:-}" ] && kill "$READER" 2>/dev/null; rm -rf "$SPOOL"; }
+trap cleanup EXIT
+
+# panel settings come from talk-to-me, so the two behave identically
+voice=$(cat "$BASE/state/voice" 2>/dev/null || echo auto)
+rate=$(cat "$BASE/state/rate" 2>/dev/null || echo 1.0)
+face=$(cat "$BASE/state/face" 2>/dev/null || echo "")
+repo=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+
+( TALKTOME_VOICE="$voice" TALKTOME_RATE="$rate" TALKTOME_FACE="$face" \
+  TALKTOME_TITLE="$repo" TALKTOME_REPO="$repo" TALKTOME_BRANCH="$branch" \
+  TALKTOME_SPOOL="$SPOOL" "$TOO/scripts/talk-reader-live" >/dev/null 2>&1 ) &
+READER=$!
+
+TALKTOME_TAP_SPOOL="$SPOOL" exec "$PY" "$S/tap.py" claude "$@"
