@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Open an iTerm2 pane, cd to DIR, and run CMD in it.
+# Default: split BELOW the pane this script was run from (found via
+# $ITERM_SESSION_ID, so it is the caller's pane, not whatever has focus).
+# --right: split to the right instead. --tab: new tab. --window: new window.
+# The text is written to the NEW session object via AppleScript, never typed
+# at whatever has focus, so a slow tab cannot send it to the wrong terminal.
+set -euo pipefail
+
+usage() { echo "usage: iterm-spawn --cwd DIR [--title T] [--color C] [--below|--right|--tab|--window] -- CMD..." >&2; exit 2; }
+
+q() { local t="'" r="'\\''"; printf "'%s'" "${1//$t/$r}"; }   # POSIX single-quote for the shell
+
+cwd="" title="" color="" mode=below
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --cwd)    cwd="${2:?}"; shift 2 ;;
+    --title)  title="${2:?}"; shift 2 ;;
+    --color)  color="${2:?}"; shift 2 ;;
+    --below)  mode=below; shift ;;
+    --right)  mode=right; shift ;;
+    --window) mode=window; shift ;;
+    --tab)    mode=tab; shift ;;
+    --)       shift; break ;;
+    *)        usage ;;
+  esac
+done
+[[ -n "$cwd" && $# -gt 0 ]] || usage
+[[ -d "$cwd" ]] || { echo "iterm-spawn: no such dir: $cwd" >&2; exit 1; }
+: "${title:=$(basename "$cwd")}"
+
+# rgb for tab colour; empty = leave the tab uncoloured
+rgb=""
+case "$color" in
+  "") ;;
+  black) rgb="0 0 0" ;;       red) rgb="230 70 70" ;;     green) rgb="70 190 90" ;;
+  yellow) rgb="235 190 40" ;; blue) rgb="70 120 230" ;;   magenta) rgb="200 80 200" ;;
+  cyan) rgb="60 190 200" ;;   white) rgb="235 235 235" ;;
+  *) echo "iterm-spawn: --color must be one of black red green yellow blue magenta cyan white" >&2; exit 2 ;;
+esac
+
+# One arg is a shell line, used as-is. Several are argv: keep argv[0] BARE
+# (a shell only expands an alias on an unquoted word), quote the rest.
+if [[ $# -eq 1 ]]; then
+  cmd="$1"
+else
+  cmd="$1"; shift
+  for a in "$@"; do cmd+=" $(q "$a")"; done
+fi
+
+# Title via OSC 1/2, tab colour via OSC 6. Printed first so the agent's own
+# title does not matter; iTerm lets the running program override later.
+line="cd $(q "$cwd") && printf '\\033]1;%s\\007\\033]2;%s\\007' $(q "$title") $(q "$title")"
+if [[ -n "$rgb" ]]; then
+  read -r r g b <<<"$rgb"
+  line+=" && printf '\\033]6;1;bg;red;brightness;$r\\007\\033]6;1;bg;green;brightness;$g\\007\\033]6;1;bg;blue;brightness;$b\\007'"
+fi
+line+=" && clear && $cmd"
+
+# ITERM_SESSION_ID looks like w0t0p0:UUID; the UUID is the session's AppleScript id
+sid="${ITERM_SESSION_ID#*:}"
+
+osascript - "$mode" "$line" "$sid" <<'OSA'
+on run argv
+  set mode to item 1 of argv
+  set theLine to item 2 of argv
+  set sid to item 3 of argv
+  tell application "iTerm2"
+    activate
+    if (count of windows) is 0 or mode is "window" then
+      set newSession to current session of (create window with default profile)
+    else
+      -- find the caller's own session; fall back to the focused one
+      set src to missing value
+      set srcWin to current window
+      if sid is not "" then
+        repeat with w in windows
+          repeat with t in tabs of w
+            repeat with s in sessions of t
+              if unique id of s is sid then
+                set src to s
+                set srcWin to w
+              end if
+            end repeat
+          end repeat
+        end repeat
+      end if
+      if src is missing value then set src to current session of current tab of current window
+      if mode is "tab" then
+        tell srcWin to create tab with default profile
+        set newSession to current session of current tab of srcWin
+      else if mode is "right" then
+        tell src to set newSession to (split vertically with default profile)
+      else
+        tell src to set newSession to (split horizontally with default profile)
+      end if
+    end if
+    tell newSession to write text theLine
+  end tell
+end run
+OSA
+echo "iterm-spawn: launched ($mode) in $cwd"

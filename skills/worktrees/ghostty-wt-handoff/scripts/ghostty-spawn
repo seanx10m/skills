@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Open a Ghostty split, tab or window, cd to DIR, and run CMD in it.
+# Default: split BELOW the terminal this script was run from. Ghostty exports
+# no per-surface id, so the caller's terminal is found by matching the
+# controlling tty's shell cwd against each terminal's working directory,
+# falling back to the focused terminal.
+# --right: split right. --tab: new tab. --window: new window.
+# The command rides in the new surface's `initial input` (set via AppleScript
+# on the new surface itself), never typed at whatever has focus.
+set -euo pipefail
+
+usage() { echo "usage: ghostty-spawn --cwd DIR [--title T] [--below|--right|--tab|--window] -- CMD..." >&2; exit 2; }
+
+q() { local t="'" r="'\\''"; printf "'%s'" "${1//$t/$r}"; }   # POSIX single-quote for the shell
+
+cwd="" title="" mode=below
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --cwd)    cwd="${2:?}"; shift 2 ;;
+    --title)  title="${2:?}"; shift 2 ;;
+    --below)  mode=below; shift ;;
+    --right)  mode=right; shift ;;
+    --window) mode=window; shift ;;
+    --tab)    mode=tab; shift ;;
+    --)       shift; break ;;
+    *)        usage ;;
+  esac
+done
+[[ -n "$cwd" && $# -gt 0 ]] || usage
+[[ -d "$cwd" ]] || { echo "ghostty-spawn: no such dir: $cwd" >&2; exit 1; }
+: "${title:=$(basename "$cwd")}"
+
+# One arg is a shell line, used as-is. Several are argv: keep argv[0] BARE
+# (a shell only expands an alias on an unquoted word), quote the rest.
+if [[ $# -eq 1 ]]; then
+  cmd="$1"
+else
+  cmd="$1"; shift
+  for a in "$@"; do cmd+=" $(q "$a")"; done
+fi
+
+# Title via OSC 1/2; the running program may override it later.
+line="printf '\\033]1;%s\\007\\033]2;%s\\007' $(q "$title") $(q "$title") && clear && $cmd"
+
+osascript - "$mode" "$line" "$cwd" "$PWD" >/dev/null <<'OSA'
+on run argv
+  set mode to item 1 of argv
+  set theLine to item 2 of argv
+  set theCwd to item 3 of argv
+  set callerCwd to item 4 of argv
+  tell application "Ghostty"
+    activate
+    set cfg to new surface configuration
+    set initial working directory of cfg to theCwd
+    set initial input of cfg to theLine & linefeed
+    if (count of windows) is 0 or mode is "window" then
+      new window with configuration cfg
+    else if mode is "tab" then
+      new tab in front window with configuration cfg
+    else
+      -- caller's terminal: first one whose cwd matches, else the focused one
+      set src to focused terminal of selected tab of front window
+      repeat with t in terminals
+        if (working directory of t) is callerCwd then
+          set src to t
+          exit repeat
+        end if
+      end repeat
+      if mode is "right" then
+        split src direction right with configuration cfg
+      else
+        split src direction down with configuration cfg
+      end if
+    end if
+  end tell
+end run
+OSA
+echo "ghostty-spawn: launched ($mode) in $cwd"

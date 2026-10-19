@@ -1,0 +1,23 @@
+Bundled fonts - licenses
+
+Four of the five fonts in this directory are from Google Fonts and are licensed under the
+SIL Open Font License, Version 1.1 (https://openfontlicense.org, full text at
+https://scripts.sil.org/OFL). Copyright notices are read from each font's name table.
+
+- Bangers-Regular.ttf         Copyright 2010 The Bangers Project Authors (https://github.com/googlefonts/bangers)
+                              https://fonts.google.com/specimen/Bangers
+- CaveatBrush-Regular.ttf     Copyright 2015 Google Inc. All Rights Reserved.
+                              https://fonts.google.com/specimen/Caveat+Brush
+- GochiHand-Regular.ttf       Copyright (c) 2011, Huerta Tipografica (www.huertatipografica.com.ar),
+                              with Reserved Font Names "Gochi" and "Gochi Hand"
+                              https://fonts.google.com/specimen/Gochi+Hand
+- PatrickHand-Regular.ttf     Copyright (c) 2012 Patrick Wagesreiter
+                              https://fonts.google.com/specimen/Patrick+Hand
+
+Exception: PermanentMarker-Regular.ttf (Copyright (c) 2010 by Font Diner, Inc.,
+https://fonts.google.com/specimen/Permanent+Marker) is licensed under the Apache License,
+Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0), not the OFL.
+
+The OFL permits using, studying, copying, modifying and redistributing these fonts, including
+bundled with software, provided the copyright notices and license are retained and the fonts
+are not sold by themselves. Fonts with Reserved Font Names may not be modified under that name.

@@ -1,0 +1,14 @@
+{
+  "name": "skills",
+  "owner": { "name": "seanx10m", "url": "https://github.com/seanx10m" },
+  "description": "Self-contained agent skills for Claude Code.",
+  "plugins": [
+    {
+      "name": "skills",
+      "source": "./",
+      "description": "Worktree handoffs, Markdown preview, voice, video and YouTube tools, quizzes, shell shortcuts.",
+      "category": "productivity",
+      "keywords": ["skills", "worktrees", "handoff", "media", "productivity"]
+    }
+  ]
+}

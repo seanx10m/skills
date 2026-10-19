@@ -1,0 +1,15 @@
+.DS_Store
+__pycache__/
+.venv/
+node_modules/
+target/
+scratch/
+state/
+.previews/
+*.bak
+# compiled from .swift sources at install
+skills/talk-to-me/scripts/personal-say
+skills/talk-to-me/scripts/personal-say-tofile
+skills/talk-to-me/scripts/talk-reader-live
+skills/watch-video/scripts/ocr
+.scrub-brief.md
