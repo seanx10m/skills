@@ -54,6 +54,7 @@ The three terminal handoffs each include the full `wt-handoff` procedure, so non
 | [youtube-to-m4a](skills/media/youtube-to-m4a) | Download a YouTube video's audio as .m4a | any |
 | [youtube-to-command](skills/media/youtube-to-command) | Bind a YouTube track to a zsh command that toggles playback | macOS |
 | [stick-video](skills/media/stick-video) | Hand-drawn stick-figure explainer videos with voiceover, optional two-host dialogue | any |
+| [motion](skills/media/motion) | 3D motion loops for any brand: three.js scenes rendered frame-exact, fanned out as options | any |
 
 ## Learning
 

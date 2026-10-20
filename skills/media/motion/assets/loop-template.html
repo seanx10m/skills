@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>__TITLE__</title>
+<script type="importmap">
+{"imports":{"three":"./assets/three/three.module.js","three/addons/":"./assets/three/addons/"}}
+</script>
+<style>
+/* Brand fonts: put woff2 files in assets/brand/ and declare them here with @font-face. */
+html,body{margin:0;background:#111214}
+#root{position:relative;width:100%;height:100%;overflow:hidden;background:radial-gradient(80% 70% at 50% 55%,#18191C,#111214 75%)}
+#gl{position:absolute;inset:0;width:100%;height:100%}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="10" data-no-timeline>
+  <canvas id="gl"></canvas>
+</div>
+<script type="module">
+import * as THREE from "three";
+
+// ---- determinism: seeded PRNG, all randomness drawn once at build ----
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rand = mulberry32(7);
+
+// ---- brand tokens: replace from the brand profile; keep GROUND in sync with the CSS above ----
+const GROUND = 0x111214, PANEL = 0x1B1C1F, ACCENT = 0xE8E6E1, SECOND = 0x7F8A99;
+const LOOP = 10;
+
+const canvas = document.getElementById("gl");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setSize(1920, 1080, false);
+renderer.setPixelRatio(1);
+// Tone mapping shifts dark grounds (Neutral turns them navy); light within range instead.
+renderer.toneMapping = THREE.NoToneMapping;
+renderer.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1920 / 1080, 0.1, 200);
+
+// ---- build the scene here (synchronously; await fonts before CanvasTextures) ----
+
+// ---- render purely from time; phase in [0,1) makes the loop exact ----
+function renderAt(t) {
+  const phase = ((t % LOOP) + LOOP) % LOOP / LOOP;
+  const a = phase * Math.PI * 2;
+  camera.position.set(Math.sin(a) * 8, 3, Math.cos(a) * 8);
+  camera.lookAt(0, 0, 0);
+  renderer.render(scene, camera);
+}
+
+window.addEventListener("hf-seek", (e) => renderAt(e.detail.time));
+renderAt(window.__hfThreeTime || 0);
+</script>
+</body>
+</html>

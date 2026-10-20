@@ -4,7 +4,13 @@
   "description": "Self-contained agent skills: worktree handoffs, Markdown preview, voice, video and YouTube tools, quizzes, shell shortcuts.",
   "repository": "https://github.com/seanx10m/skills",
   "license": "MIT",
-  "keywords": ["skills", "worktrees", "handoff", "media", "productivity"],
+  "keywords": [
+    "skills",
+    "worktrees",
+    "handoff",
+    "media",
+    "productivity"
+  ],
   "skills": [
     "./skills/agent-ui/browser-preview",
     "./skills/agent-ui/decide-ui",
@@ -13,6 +19,7 @@
     "./skills/learning/quiz-me",
     "./skills/learning/quiz-me-full",
     "./skills/media/image-gen",
+    "./skills/media/motion",
     "./skills/media/stick-video",
     "./skills/media/watch-video",
     "./skills/media/xtract",
@@ -28,5 +35,5 @@
     "./skills/worktrees/warp-wt-handoff",
     "./skills/worktrees/worktree-default",
     "./skills/worktrees/wt-handoff"
-]
+  ]
 }
