@@ -1,6 +1,6 @@
 {
   "name": "skills",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Self-contained agent skills: worktree handoffs, Markdown preview, voice, video and YouTube tools, quizzes, shell shortcuts.",
   "repository": "https://github.com/seanx10m/skills",
   "license": "MIT",
@@ -16,6 +16,7 @@
     "./skills/agent-ui/decide-ui",
     "./skills/agent-ui/progress-hud",
     "./skills/agent-ui/talk-to-me",
+    "./skills/agent-ui/todos",
     "./skills/learning/quiz-me",
     "./skills/learning/quiz-me-full",
     "./skills/media/image-gen",
