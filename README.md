@@ -40,6 +40,7 @@ The three terminal handoffs each include the full `wt-handoff` procedure, so non
 | [browser-preview](skills/agent-ui/browser-preview) | Render Markdown (Mermaid, tables) to an HTML page with margin comments and a speed reader | any |
 | [decide-ui](skills/agent-ui/decide-ui) | Turn a list into a swipe-triage or tournament-bracket decision page | any |
 | [progress-hud](skills/agent-ui/progress-hud) | Floating always-on-top progress HUD for long tasks | macOS |
+| [todos](skills/agent-ui/todos) | Floating always-on-top panel that stacks every agent's checklist and animates each step | macOS |
 | [talk-to-me](skills/agent-ui/talk-to-me) | Speak responses aloud in your macOS Personal Voice with a live karaoke panel | macOS |
 
 ## Media
